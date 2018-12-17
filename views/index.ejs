@@ -1,0 +1,15 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="css.css">
+        <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+        <script type="text/javascript" src="script.js"></script>
+
+    </head>
+    <body>
+        <ul>
+            <% products.forEach(function(product){ %>
+             <li> <%= product.id %> - <%= product.orders_counter %> <input type="button" value="commander" onclick="javascript:clientSide.onclick('<%= product.id%>');" /> </li>
+            <% }); %>
+          </ul>
+    </body>
+</html>
