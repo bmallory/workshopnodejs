@@ -11,5 +11,15 @@
              <li> <%= product.id %> - <%= product.orders_counter %> <input type="button" value="commander" onclick="javascript:clientSide.onclick('<%= product.id%>');" /> </li>
             <% }); %>
           </ul>
+
+
+          <form action="/login" method="post" style="display: none;">
+            login : <input type="text" name="user" />
+            pass : <input type="password" name="pass" />
+            <input type="submit" value="valider" />
+            <br />
+            <a href="/signup">register</a>
+        </form>
+
     </body>
 </html>
