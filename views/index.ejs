@@ -11,7 +11,7 @@
              <li> <%= product.id %> - <%= product.orders_counter %> <input type="button" value="commander" onclick="javascript:clientSide.onclick('<%= product.id%>');" /> </li>
             <% }); %>
           </ul>
-
+          <a href="/auth/google">Sign In with Google</a>
 
           <form action="/login" method="post" style="display: none;">
             login : <input type="text" name="user" />
