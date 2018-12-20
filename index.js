@@ -20,7 +20,7 @@ const bcrypt_saltrounds = 10;
 passport.use(new GoogleStrategy({
     clientID: "130839017404-fkmhf5uccocbk9a1594klaenjcnhi57u.apps.googleusercontent.com",
     clientSecret: "MulxdYDE9AocU2QQqhM3a9e-",
-    callbackURL: "http://gloob.eu:3000/auth/google/callback"
+    callbackURL: "http://gloob.eu/auth/google/callback"
 }, function(token, tokenSecret, profile, done){
     console.log(profile);
     UserBooks.findOneAndUpdate({googleId: profile.id}, {"name": profile.displayName, pass:""}, {upsert:true}, function(err,user){
@@ -211,6 +211,6 @@ app.post('/login', function(req, res){
     });
 });
 
-app.listen(3000, function () {
+app.listen(80, function () {
     console.log('Example app listening on port 3000!')
 })
