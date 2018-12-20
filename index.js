@@ -6,20 +6,37 @@ const cookieParser = require('cookie-parser')
 const mongoose = require('mongoose');
 const bcrypt = require("bcrypt");
 const passport = require('passport');
+const restify = require('express-restify-mongoose');
+const router = express.Router();
+const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+const stripe = require("stripe")("sk_test_4eC39HqLyjWDarjtT1zdp7dc");
 
-var GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+const Book = mongoose.model('Book', { name: String, id: String, orders_counter: Number });
+const UserBooks = mongoose.model('UserBooks', {name: String, pass : String, googleId: String});
+const Orders = mongoose.model("Orders", {productref:{ type: mongoose.Schema.Types.ObjectId, ref: 'Book'}, userref: { type: mongoose.Schema.Types.ObjectId, ref: 'UserBoks'}, date: String, price: Number});
+
+const bcrypt_saltrounds = 10;
 
 passport.use(new GoogleStrategy({
     clientID: "130839017404-fkmhf5uccocbk9a1594klaenjcnhi57u.apps.googleusercontent.com",
     clientSecret: "MulxdYDE9AocU2QQqhM3a9e-",
-    callbackURL: "http://gloob.eu:3000"
+    callbackURL: "http://gloob.eu:3000/auth/google/callback"
 }, function(token, tokenSecret, profile, done){
-    UserBooks.findOrCreate({googleId: profile.id}, function(err,user){
+    console.log(profile);
+    UserBooks.findOneAndUpdate({googleId: profile.id}, {"name": profile.displayName, pass:""}, {upsert:true}, function(err,user){
+        
         return done(err,user);
     });
 }));
+passport.serializeUser(function(user, done) {
+    done(null, user);
+  });
+  
+  passport.deserializeUser(function(user, done) {
+    done(null, user);
+  });
 
-const bcrypt_saltrounds = 10;
+
 
 app.use(express.static('public'))
 app.use(cookieParser())
@@ -27,14 +44,14 @@ app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   extended: true
 }));
-
+app.use(passport.initialize());
+app.use(passport.session());
 
 mongoose.connect('mongodb://localhost:27017');
 
-const Book = mongoose.model('Book', { name: String, id: String, orders_counter: Number });
-const UserBooks = mongoose.model('UserBooks', {name: String, pass : String});
-const Orders = mongoose.model("Orders", {productref:{ type: mongoose.Schema.Types.ObjectId, ref: 'Book'}, userref: { type: mongoose.Schema.Types.ObjectId, ref: 'UserBoks'}, date: String, price: Number});
+restify.serve(router, Book);
 
+app.use(router);
 
 app.addOrder = function(productid, userid){
 
@@ -52,25 +69,21 @@ app.addOrder = function(productid, userid){
     }).then((res) => console.log(res));
 };
 
-
 app.set('view engine', 'ejs');
-
 
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
 
-// GET /auth/google/callback
-//   Use passport.authenticate() as route middleware to authenticate the
-//   request.  If authentication fails, the user will be redirected back to the
-//   login page.  Otherwise, the primary route function function will be called,
-//   which, in this example, will redirect the user to the home page.
 app.get('/auth/google/callback', 
   passport.authenticate('google', { failureRedirect: '/login' }),
   function(req, res) {
+      console.log(req.user);
+    res.cookie('uname',req.user.name, { maxAge: 900000, httpOnly: true });
+    res.cookie('token','googleId:'+req.googleId, { maxAge: 900000, httpOnly: true });
     res.redirect('/');
   });
 
-app.get('/',passport.authenticate('google', { failureRedirect: '/login' }), function (req, res){
+app.get('/', function (req, res){
 
     console.log(req.user);
 
@@ -79,7 +92,6 @@ app.get('/',passport.authenticate('google', { failureRedirect: '/login' }), func
         })
 
 });
-
 
 app.get('/orders/:uid', function(req, res){
     var orderP = new Promise((resolve, reject) =>{
@@ -104,7 +116,23 @@ app.get('/products/:uid', async function(req, res){
 })
 
 app.get('/order/:id', function(req,res){
-    if(req.cookies.uname !== "" && req.cookies.uname !== null && req.cookies.token != "" && req.cookies.token != null ){
+    if(
+        (req.cookies.uname !== "" && req.cookies.uname !== null && req.cookies.token != "" && req.cookies.token != null)
+        || (req.user !== null)
+         ){
+
+     
+
+            // // Token is created using Checkout or Elements!
+            // // Get the payment token ID submitted by the form:
+             token = req.query.stripeToken; // Using Express
+
+            const charge = stripe.charges.create({
+            amount: 999,
+            currency: 'usd',
+            description: 'Example charge',
+            source: token,
+            });
 
 
         UserBooks.findOne({"name":req.cookies.uname})

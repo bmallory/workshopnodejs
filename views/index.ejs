@@ -8,7 +8,22 @@
     <body>
         <ul>
             <% products.forEach(function(product){ %>
-             <li> <%= product.id %> - <%= product.orders_counter %> <input type="button" value="commander" onclick="javascript:clientSide.onclick('<%= product.id%>');" /> </li>
+             <li>
+                  <%= product.id %> - <%= product.orders_counter %> <input type="button" value="commander" onclick="javascript:clientSide.onclick('<%= product.id%>');" /> 
+                  <form action="/order/<%= product.id %>" method="GET">
+                        <script
+                          src="https://checkout.stripe.com/checkout.js" class="stripe-button"
+                          data-key="pk_test_TYooMQauvdEDq54NiTphI7jx"
+                          data-amount="999"
+                          data-name="Stripe.com"
+                          data-description="Example charge"
+                          data-image="https://stripe.com/img/documentation/checkout/marketplace.png"
+                          data-locale="auto"
+                          data-zip-code="true">
+                        </script>
+                      </form>
+                
+                </li>
             <% }); %>
           </ul>
           <a href="/auth/google">Sign In with Google</a>
@@ -20,6 +35,9 @@
             <br />
             <a href="/signup">register</a>
         </form>
+
+
+       
 
     </body>
 </html>
