@@ -52,7 +52,25 @@ mongoose.connect('mongodb://localhost:27017');
 restify.serve(router, Book);
 
 app.use(router);
+app.set('view engine', 'ejs');
 
+
+
+
+app.get('/', function (req, res){
+
+    console.log(req.user);
+
+        Book.find(function(err,books){
+            res.render('index', {'products': books});
+        })
+
+});
+
+
+/**
+ * add order avec Promise.all
+ */
 app.addOrder = function(productid, userid){
 
     var bookP = new Promise((resolve, reject) => {
@@ -69,38 +87,9 @@ app.addOrder = function(productid, userid){
     }).then((res) => console.log(res));
 };
 
-app.set('view engine', 'ejs');
-
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
-
-app.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  function(req, res) {
-      console.log(req.user);
-    res.cookie('uname',req.user.name, { maxAge: 900000, httpOnly: true });
-    res.cookie('token','googleId:'+req.googleId, { maxAge: 900000, httpOnly: true });
-    res.redirect('/');
-  });
-
-app.get('/', function (req, res){
-
-    console.log(req.user);
-
-        Book.find(function(err,books){
-            res.render('index', {'products': books});
-        })
-
-});
-
-app.get('/orders/:uid', function(req, res){
-    var orderP = new Promise((resolve, reject) =>{
-        Orders.find({'userref':req.params.uid}, function(err,orders){ resolve(orders)});
-    }).then((ret) => {
-        res.send(ret)
-    })
-})
-
+/**
+ * get products avec async / await
+ */
 app.get('/products/:uid', async function(req, res){
 
     var orders = await new Promise((resolve, reject) => {
@@ -115,69 +104,9 @@ app.get('/products/:uid', async function(req, res){
     
 })
 
-app.get('/order/:id', function(req,res){
-    if(
-        (req.cookies.uname !== "" && req.cookies.uname !== null && req.cookies.token != "" && req.cookies.token != null)
-        || (req.user !== null)
-         ){
-
-     
-
-            // // Token is created using Checkout or Elements!
-            // // Get the payment token ID submitted by the form:
-             token = req.query.stripeToken; // Using Express
-
-            const charge = stripe.charges.create({
-            amount: 999,
-            currency: 'usd',
-            description: 'Example charge',
-            source: token,
-            });
-
-
-        UserBooks.findOne({"name":req.cookies.uname})
-
-
-        UserBooks.findOne({'name':req.cookies.uname}, (err,user) => {
-            if(user){
-
-                // bcrypt.compare(user.name + user.pass, req.cookies.token, (err, result) => {
-                //     if(result){
-                        Book.find({'id':req.params.id}, function(err,books){
-
-                            books.forEach(
-                                element => {
-                                    if(element.id == req.params.id){
-                                        debugger;
-                                        element.orders_counter++;
-                                        element.save();
-                                        app.addOrder(element.name, user.name);
-                                       
-                                    }
-                                }
-                            )
-                            res.send('popo');
-                        });
-                    // }else{
-                    //     res.send('nokopopop');
-                    // }
-             //   })
-
-                
-            }else{
-                res.send('nok');
-            }
-        } );
-    }else{
-        res.send("nok");
-    }
-});
-
-
-app.get('/signup', function(req, res){
-    res.render('signup');
-})
-
+/**
+ * bcrypt et login 
+ */
 app.post('/register', function(req, res){
 
     hash = bcrypt.hash(req.body.pass, bcrypt_saltrounds, (err,hash) =>{
@@ -205,11 +134,93 @@ app.post('/login', function(req, res){
             })
             
         }else{
-            //res.send( "unamenok" )
             res.redirect('/')
         }
     });
 });
+
+/**
+ * auth social avec passport
+ */
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
+
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+      console.log(req.user);
+    res.cookie('uname',req.user.name, { maxAge: 900000, httpOnly: true });
+    res.cookie('token','googleId:'+req.googleId, { maxAge: 900000, httpOnly: true });
+    res.redirect('/');
+  });
+
+
+app.get('/orders/:uid', function(req, res){
+    var orderP = new Promise((resolve, reject) =>{
+        Orders.find({'userref':req.params.uid}, function(err,orders){ resolve(orders)});
+    }).then((ret) => {
+        res.send(ret)
+    })
+})
+
+
+
+app.get('/order/:id', function(req,res){
+    if(
+        (req.cookies.uname !== "" && req.cookies.uname !== null && req.cookies.token != "" && req.cookies.token != null)
+        || (req.user !== null)
+         ){
+
+            // // Token is created using Checkout or Elements!
+            // // Get the payment token ID submitted by the form:
+             token = req.query.stripeToken; // Using Express
+
+            const charge = stripe.charges.create({
+            amount: 999,
+            currency: 'usd',
+            description: 'Example charge',
+            source: token,
+            });
+
+            // le payment est synchrone
+
+
+        UserBooks.findOne({"name":req.cookies.uname})
+
+
+        UserBooks.findOne({'name':req.cookies.uname}, (err,user) => {
+            if(user){
+
+              
+                        Book.find({'id':req.params.id}, function(err,books){
+
+                            books.forEach(
+                                element => {
+                                    if(element.id == req.params.id){
+                                        debugger;
+                                        element.orders_counter++;
+                                        element.save();
+                                        app.addOrder(element.name, user.name);
+                                       
+                                    }
+                                }
+                            )
+                            res.send('popo');
+                        });
+            }else{
+                res.send('nok');
+            }
+        } );
+    }else{
+        res.send("nok");
+    }
+});
+
+
+app.get('/signup', function(req, res){
+    res.render('signup');
+})
+
 
 app.listen(80, function () {
     console.log('Example app listening on port 3000!')
